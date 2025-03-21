@@ -94,9 +94,10 @@ class HandPanel(QWidget):
 
     cardPlayed = pyqtSignal(Card)
 
-    _VERTICAL_SIZE = QSize(_IMAGE_WIDTH + 1, _IMAGE_HEIGHT + 13 * _MARGIN + 1)
+    _VERTICAL_SIZE = QSize(int(_IMAGE_WIDTH + 1), int(_IMAGE_HEIGHT + 13 * _MARGIN + 1))
     _HORIZONTAL_SIZE = QSize(
-        _IMAGE_WIDTH + 12 * _MARGIN + 1, _IMAGE_HEIGHT + _MARGIN + 1)
+    int(_IMAGE_WIDTH + 12 * _MARGIN + 1), int(_IMAGE_HEIGHT + _MARGIN + 1))
+
 
     def __init__(self, parent=None, vertical=False):
         """Initialize hand panel
@@ -234,8 +235,10 @@ class TrickPanel(QWidget):
     )
 
     _SIZE = QSize(
-        _CARD_RECTS[3].x() + _IMAGE_WIDTH + 1,
-        _CARD_RECTS[0].y() + _IMAGE_HEIGHT + 1)
+    int(_CARD_RECTS[3].x() + _IMAGE_WIDTH + 1),
+    int(_CARD_RECTS[0].y() + _IMAGE_HEIGHT + 1)
+    )
+
 
     def __init__(self, parent=None):
         """Initialize trick panel
@@ -339,22 +342,24 @@ class CardArea(QWidget):
 
     _HAND_POSITIONS = (
         QPoint(
-            HandPanel._VERTICAL_SIZE.width(),
-            (HandPanel._HORIZONTAL_SIZE.height() +
-             HandPanel._VERTICAL_SIZE.height() + _MARGIN)),
-        QPoint(0, HandPanel._HORIZONTAL_SIZE.height() + _MARGIN),
-        QPoint(HandPanel._VERTICAL_SIZE.width(), 0),
+            int(HandPanel._VERTICAL_SIZE.width()),
+            int(HandPanel._HORIZONTAL_SIZE.height() +
+                HandPanel._VERTICAL_SIZE.height() + _MARGIN)
+        ),
+        QPoint(0, int(HandPanel._HORIZONTAL_SIZE.height() + _MARGIN)),
+        QPoint(int(HandPanel._VERTICAL_SIZE.width()), 0),
         QPoint(
-            (HandPanel._HORIZONTAL_SIZE.width() +
-             HandPanel._VERTICAL_SIZE.width()),
-            HandPanel._HORIZONTAL_SIZE.height() + _MARGIN)
+            int(HandPanel._HORIZONTAL_SIZE.width() +
+                HandPanel._VERTICAL_SIZE.width()),
+            int(HandPanel._HORIZONTAL_SIZE.height() + _MARGIN)
+        )
     )
 
     _SIZE = QSize(
         _HAND_POSITIONS[3].x() + HandPanel._VERTICAL_SIZE.width(),
         _HAND_POSITIONS[0].y() + HandPanel._HORIZONTAL_SIZE.height())
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, copilot=None):
         """Initialize card area
 
         Keyword Arguments:
@@ -373,8 +378,19 @@ class CardArea(QWidget):
             position in positions.Position]
         self._trick_panel = TrickPanel(self)
         self._trick_panel.move(
-            (self._SIZE.width() - TrickPanel._SIZE.width()) / 2,
-            (self._SIZE.height() - TrickPanel._SIZE.height()) / 2)
+            int((self._SIZE.width() - TrickPanel._SIZE.width()) / 2),
+            int((self._SIZE.height() - TrickPanel._SIZE.height()) / 2)
+        )
+        if copilot:
+            # Add QLabel for displaying messages
+            self._message_label = QLabel(self)
+            self._message_label.move(100, self._SIZE.height() - 500)
+            self._message_label.resize(self._SIZE.width() - 200, 200)
+            self._message_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+            self._message_label.setStyleSheet("background-color: white; border: 1px solid black; color: black;")
+            self._message_label.setWordWrap(True)
+            self._message_label.setScaledContents(True)
+            self._message_label.show()
 
     def setPlayerPosition(self, position):
         """Set position of the current player
@@ -455,3 +471,9 @@ class CardArea(QWidget):
         label = QLabel(self)
         label.move(self._HAND_POSITIONS[position])
         return label
+
+    def displayMessage(self, message):
+        """Display a message in the message label"""
+        print(f"CardArea.displayMessage: message = {message}")
+        self._message_label.setText(message)
+        self._message_label.repaint()

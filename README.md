@@ -1,7 +1,6 @@
-# Bridge GUI
+# Bridge GUI Copilot
 
-This Python package contains GUI for my contract bridge project. See
-https://github.com/jasujm/bridge for further information.
+This Python package is fork of https://github.com/jasujm/bridge project Jaakko Moisio <jaakko@moisio.fi> with my LLM extention to act as copilot for the players
 
 ## Acknowledgments
 
@@ -10,7 +9,7 @@ Byron Knoll is acknowledged for the playing card graphics:
 
 ## Copyright
 
-Copyright © 2017–2020 Jaakko Moisio <jaakko@moisio.fi>
+Copyright © Michal Mrozik <michal.mrozik@gmail.com>
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
