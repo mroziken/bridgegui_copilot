@@ -1,1 +1,1 @@
-from .__main__ import BridgeWindowcd
+from .__main__ import BridgeWindow
