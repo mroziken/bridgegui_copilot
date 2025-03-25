@@ -127,6 +127,83 @@ class LLMIntegration:
         template = '''You are bridge player. Your position is {position}. 
         Choose the best bidding only from allowed bidding based on the cards you have in hand and the bidding so far.
 
+        Bid as per the bellow bidding strategy:
+
+        Major Suits are Spades and Hearts
+        Minor Suits are Diamonds and Clubs
+
+        Opening Bids:
+            1. Pass if you have less than 12 HCP
+            2. If you have 12-18 HCP, open at the 1-level with a 5-card suit or a balanced hand
+            3. If you have 12-14 HCP and no 5-card suit, open 1 clubs with a balanced hand
+            4. if you have 15-18 HCP and no 5-card suit, open 1 notrump with a balanced hand
+            5. If you have 19+ HCP and a 5-card suit, open at the 2-level
+            6. If you have 19-23 HCP and no 5-card suit, open 2 clubs
+            7. If you have 24+ HCP and no 5-card suit, open 3 notrump
+        
+        Respons to partners opening bid:
+            Case: Opening bid is 1 clubs:
+                1. If you have 0-6 HCP, pass
+                2. If you have 7-12 HCP and at least 4-card major, bid 1 of that major
+                3. If you have 7-12 HCP and no at least 4-card major but  have 5+ diamonds, bid 1 diamonds
+                4. If you have 7-10 HCP and no at least 4-card major but have 6+ clubs, bid 2 clubs
+                5. If you have 11-12 HCP and no at least 4-card major but have 6+ clubs, bid 3 clubs
+                6. If you have 7-10 HCP and no at least 4-card major no 5+ diamonds, no 6+ clubs, bid 1 notrump
+                7. If you have 11-12 HCP and no at least 4-card major no 5+ diamonds, no 6+ clubs, bid 2 notrump
+                8. If you have 13+ HCP and 5+ spades or 5+ hearts or 5+ diamonds, bid 2 of the suit
+                9. If you have 13+ HCP and you don't have 5+ spades or 5+ hearts or 5+ diamonds but have 7+ clubs, bid 5 clubs
+                10. If you have 13+ HCP and you don't have 5+ spades or 5+ hearts or 5+ diamonds but have 4 spades or 4 hearts, bid 1 of the suit
+                11. If you have 13+ HCP and you don't have 4+ spades or 4+ hearts or 5+ diamonds or 7+ clubs, bid 3 notrump
+
+            Case: Opening bid is 1 diamonds:
+                1. If you have 0-6 HCP, pass
+                2. If you have 7-12 HCP and at least 4-card major, bid 1 of that major
+                3. If you have 7-10 HCP and no at least 4-card major but  have 4+ diamonds, bid 2 diamonds
+                4. If you have 11-12 HCP and no at least 4-card major but have 4+ diamonds, bid 3 diamonds 
+                5. If you have 7-10 HCP and no at least 4-card major no 4+ diamonds, bid 1 notrump
+                6. If you have 11-12 HCP and no at least 4-card major no 4+ diamonds, bid 2 notrump
+                7. If you have 13+ HCP and 5+ spades or 5+ hearts or 5+ clubs, bid 2 of the suit
+                8. If you have 13+ HCP and you don't have 5+ spades or 5+ hearts or 5+ clubs but have 4 spades or 4 hearts, bid 1 of the suit
+                9. If you have 13+ HCP and you don't have 4+ spades or 4+ hearts but you have 6+ diamonds, bid 5 diamonds
+                10. If you have 13+ HCP and you don't have 4+ spades or 4+ hearts or 6+ diamonds, bid 3 notrump
+
+            Case: Opening bid is 1 hearts:
+                1. If you have 0-6 HCP, pass
+                2. If you have 7-10 HCP and 3+ hearts, bid 2 hearts
+                3. If you have 11-12 HCP and 3+ hearts, bid 3 hearts
+                4. If you have 13-18 HCP and 3+ hearts, bid 4 hearts
+                5. If you don't have 3+ hearts but have 7-12 HCP and 4+ spades, bid 1 spades
+                6. If you don't have 3+ hearts but have 7-10 HCP and no 4+ spades, bid 1 notrump
+                7. If you don't have 3+ hearts but have 11-12 HCP and no 4+ spades, bid 2 notrump
+                8. If you don't have 3+ hearts but have 13+ HCP and 5+ diamonds or 5+ clubs or 5+ spades, bid 2 of the suit
+                9. If you don't have 3+ hearts but have 13+ HCP and no 5+ diamonds or 5+ clubs or 5+ diamonds but have 4 spades, bid 1 spades
+                10. If you don't have 3+ hearts but have 13+ HCP and no 5+ diamonds or 5+ clubs or 5+ diamonds or 4 spades, bid 3 notrump
+
+            Case: Opening bid is 1 spades:
+                1. If you have 0-6 HCP, pass
+                2. If you have 7-10 HCP and 3+ spades, bid 2 spades
+                3. If you have 11-12 HCP and 3+ spades, bid 3 spades
+                4. If you have 13-18 HCP and 3+ spades, bid 4 spades
+                5. If you don't have 3+ spades but have 7-10 HCP and 4+ hearts, bid 1 notrump
+                6. If you don't have 3+ spades but have 11-12 HCP and 4+ hearts, bid 2 notrump
+                7. If you don't have 3+ spades but have 13+ HCP and 5+ diamonds or 5+ clubs or 5+ hearts, bid 2 of the suit
+                8. If you don't have 3+ spades but have 13+ HCP and no 5+ diamonds or 5+ clubs or 5+ hearts bid 3 notrump
+
+            Case: Opening bid is 1 notrump:
+                1. If you don't have 5+ major or 6+ minor and have 0-7 HCP, pass
+                2. If you don't have 5+ major or 6+ minor and have 8-9 HCP, bid 2 notrump
+                3. If you don't have 5+ major or 6+ minor and have 10-15 HCP, bid 3 notrump
+                4. If you don't have 5+ major or 6+ minor and have 16-17 HCP, bid 4 notrump
+                5. If you don't have 5+ major or 6+ minor and have 18-20 HCP, bid 6 notrump
+                6. If you have 5+ spades bid 2 hearts -> partner will bid 2 spades
+                7. If you have 5+ hearts bid 2 diamonds -> partner will bid 2 hearts
+                8. If you have 6+ diamonds bid 3 clubs -> partner will bid 3 diamonds
+                9. If you have 6+ clubs bid 3 spades -> partner will bid 3 clubs
+
+        If we (with partner) have 8+ major suit cards we should aim to finilize bidding in the major suit.
+        If we (with partner) don't have 8+ major suit cards and stronge hand we should aim to finilize bidding in the notrump.
+        If we (with partner) don't have 8+ major suit cards and weak hand we should aim to finilize bidding in the minor suit.
+
         Formulate final answer in the following steps:
         1. Analyze the hand
         2. Analyze the bidding so far
