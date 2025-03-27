@@ -30,6 +30,7 @@ from dotenv import load_dotenv
 from bridgegui.llm_integration import LLMIntegration
 from collections import namedtuple
 import threading
+from bridgegui.copilot import Copilot  # Import the Copilot widget
 
 HELLO_COMMAND = b'bridgehlo'
 GAME_COMMAND = b'game'
@@ -66,7 +67,7 @@ class BridgeAutopilot(QObject):
     """Handles the autopilot mode without GUI."""
 
     def __init__(self, control_socket, event_socket, position, game_uuid,
-                 create_game, player_uuid, copilot, autopilot):
+                 create_game, player_uuid, autopilot, model):
         super().__init__()  # Initialize QObject
         load_dotenv()
         self.api_key = os.getenv("OPENAI_API_KEY")
@@ -77,8 +78,8 @@ class BridgeAutopilot(QObject):
         self._game_uuid = game_uuid
         self._create_game = create_game
         self._player_uuid = player_uuid if player_uuid else str(uuid.uuid4())
-        self._copilot = True if copilot else False
         self._autopilot = True if autopilot else False
+        self._model = model
         self._running = True
 
         # Initialize the timer
@@ -261,40 +262,38 @@ class BridgeAutopilot(QObject):
             self._cards.update(cards)
             logging.info("Cards: %r", cards)
         # make call to get_bid_suggestion from llm_integration
-        logging.info(f"copilot: {self._copilot}")
         logging.info(f"autopilot: {self._autopilot}")
         if allowed_calls is not missing:
+            logging.info(f"allowed_calls: {allowed_calls}")
             if allowed_calls:
-                if (self._copilot or self._autopilot):
+                logging.info(f"len(allowed_calls): {len(allowed_calls)}")
+                if len(allowed_calls) > 1: 
                     logging.info(f"position: {position}")
                     hand = self._cards.get(position, [])
                     logging.info(f"hand: {hand}")
-                    logging.info(f"allowed_calls: {allowed_calls}") 
+                    logging.info(f"allowed_calls: {allowed_calls}")
                     bids_history = self._bids_history
                     logging.info(f"bids_history: {bids_history}")
-                    get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_calls, bids_history)
+                    allowed_biddings = self._llm_integration_instance.get_allowed_bidding(allowed_calls)
+                    get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_biddings, bids_history,self._model)
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
-                    logging.info(f"allowed_calls: {allowed_calls}")
-                    logging.info(f"autopilot: {self._autopilot}")
-                    if self._autopilot:
-                        if len(allowed_calls) > 1: 
-                            get_bid = self._llm_integration_instance.get_bid_prompt(get_bid_suggestion, allowed_calls)
-                            logging.info(f"get_bid from llm: {get_bid}")
-                            try:
-                                # Remove backticks and extra formatting
-                                cleaned_response = get_bid.strip("```json").strip("```").strip()
-                                get_bid = json.loads(cleaned_response)
-                                logging.info(f"after cleaning get_bid: {get_bid}")
-                                # Call _send_call_command to send the bid to the server
-                                self._send_call_command(get_bid)
-                            except json.JSONDecodeError as e:
-                                logging.error(f"Failed to parse JSON from get_bid: {e}")
-                            except Exception as e:
-                                logging.error(f"Unexpected error while handling get_bid: {e}")
-                        else:
-                            get_bid = allowed_calls[0]
-                            logging.info(f"only allowed bid: {get_bid}")
-                            self._send_call_command(get_bid)
+                    get_bid = self._llm_integration_instance.get_bid_prompt(get_bid_suggestion, allowed_calls)
+                    logging.info(f"get_bid from llm: {get_bid}")
+                    try:
+                        # Remove backticks and extra formatting
+                        cleaned_response = get_bid.strip("```json").strip("```").strip()
+                        get_bid = json.loads(cleaned_response)
+                        logging.info(f"after cleaning get_bid: {get_bid}")
+                        # Call _send_call_command to send the bid to the server
+                        self._send_call_command(get_bid)
+                    except json.JSONDecodeError as e:
+                        logging.error(f"Failed to parse JSON from get_bid: {e}")
+                    except Exception as e:
+                        logging.error(f"Unexpected error while handling get_bid: {e}")
+                else:
+                    get_bid = allowed_calls[0]
+                    logging.info(f"only allowed bid: {get_bid}")
+                    self._send_call_command(get_bid)
             else:
                 logging.error("Allowed calls list empty ")
         else:
@@ -302,8 +301,6 @@ class BridgeAutopilot(QObject):
         allowed_cards = _self.get(ALLOWED_CARDS_TAG, missing)
         if allowed_cards is not missing:
             logging.info("Allowed cards: %r", allowed_cards)
-            #play_from, position, own_hand, partners_hand, trick, allowed_cards, contract, contractors, bids_history, tricks_history
-            #play_from = position_in_turn
             if allowed_cards:
                 play_from = "Own hand"
                 own_hand = self._cards.get(position, [])
@@ -328,38 +325,43 @@ class BridgeAutopilot(QObject):
                 logging.info(f"contractors: {contractors}")
                 logging.info(f"bids_history: {bids_history}")
                 logging.info(f"tricks_history: {tricks_history}")
-                if (self._autopilot):
-                    get_card_play_suggestion = self._llm_integration_instance.get_card_play_suggestion(play_from, position, own_hand, partners_hand, trick, allowed_cards, contract, contractors, bids_history, tricks_history)
-                    logging.info(f"get_card_play_suggestion: {get_card_play_suggestion}")
-                    if self._autopilot:
-                        try:
-                            if not get_card_play_suggestion:
-                                raise ValueError("get_card_play_suggestion is empty or invalid.")
-                            
-                            get_card_play_prompt = self._llm_integration_instance.get_card_play_prompt(
-                                get_card_play_suggestion, allowed_cards
-                            )
-                            logging.info(f"get_card_play_prompt: {get_card_play_prompt}")
+                get_card_play_suggestion = self._llm_integration_instance.get_card_play_suggestion(play_from, position, own_hand, partners_hand, trick, allowed_cards, contract, contractors, bids_history, tricks_history)
+                logging.info(f"get_card_play_suggestion: {get_card_play_suggestion}")
+                try:
+                    if not get_card_play_suggestion:
+                        raise ValueError("get_card_play_suggestion is empty or invalid.")
+                    
+                    get_card_play_prompt = self._llm_integration_instance.get_card_play_prompt(
+                        get_card_play_suggestion, allowed_cards
+                    )
+                    logging.info(f"get_card_play_prompt: {get_card_play_prompt}")
 
-                            # Validate the prompt before parsing
-                            if not get_card_play_prompt or not isinstance(get_card_play_prompt, str):
-                                raise ValueError("Invalid prompt received from get_card_play_prompt.")
+                    # Validate the prompt before parsing
+                    if not get_card_play_prompt or not isinstance(get_card_play_prompt, str):
+                        raise ValueError("Invalid prompt received from get_card_play_prompt.")
 
-                            # Clean up the response and parse JSON
-                            cleaned_response = get_card_play_prompt.strip("```json").strip("```").strip()
-                            get_card_play_prompt = json.loads(cleaned_response)
-                            logging.info(f"after cleaning get_card_play_prompt: {get_card_play_prompt}")
+                    # Clean up the response and parse JSON
+                    cleaned_response = get_card_play_prompt.strip("```json").strip("```").strip()
+                    get_card_play_prompt = json.loads(cleaned_response)
+                    logging.info(f"after cleaning get_card_play_prompt: {get_card_play_prompt}")
 
-                            # Call _send_play_command to send the play to the server
-                            Card = namedtuple("Card", ["rank", "suit"])
-                            card = Card(**get_card_play_prompt)
-                            self._send_play_command(card)
-                        except ValueError as e:
-                            logging.error(f"Validation error: {e}")
-                        except json.JSONDecodeError as e:
-                            logging.error(f"Failed to parse JSON from get_card_play_prompt: {e}")
-                        except Exception as e:
-                            logging.error(f"Unexpected error while handling get_card_play_prompt: {e}")
+                    # Call _send_play_command to send the play to the server
+                    Card = namedtuple("Card", ["rank", "suit"])
+                    card = Card(**get_card_play_prompt)
+
+                    # Convert the Card object to a dictionary for comparison
+                    card_dict = card._asdict()
+
+                    if card_dict not in allowed_cards:
+                        logging.error(f"Card {card_dict} is not in allowed cards: {allowed_cards}")
+                        return
+                    self._send_play_command(card)
+                except ValueError as e:
+                    logging.error(f"Validation error: {e}")
+                except json.JSONDecodeError as e:
+                    logging.error(f"Failed to parse JSON from get_card_play_prompt: {e}")
+                except Exception as e:
+                    logging.error(f"Unexpected error while handling get_card_play_prompt: {e}")
         tricks = pubstate.get(TRICKS_TAG, missing)
         if tricks is not missing:
             if tricks:
@@ -380,7 +382,10 @@ class BridgeAutopilot(QObject):
         logging.debug("Call successful")
 
     def _handle_play_reply(self, **kwargs):
-        logging.debug("Play successful")
+        if kwargs.get("status") == "ERR:RV":
+            logging.error("Rule violation: Invalid card play")
+        else:
+            logging.debug("Play successful")
 
     def _handle_deal_event(self, opener=None, vulnerability=None, counter=None, **kwargs):
         logging.debug("Dealing cards")
@@ -395,6 +400,7 @@ class BridgeAutopilot(QObject):
             return
         logging.debug("Position in turn: %r", position)
         if position == self._position:
+            logging.debug("Requesting self")
             self._request(SELF_TAG)
 
     def _handle_call_event(
@@ -457,7 +463,7 @@ class BridgeWindow(QMainWindow):
 
     def __init__(
             self, control_socket, event_socket, position, game_uuid,
-            create_game, player_uuid, copilot, autopilot):
+            create_game, player_uuid, copilot, model):
         """Initialize BridgeWindow
 
         Keyword Arguments:
@@ -468,7 +474,7 @@ class BridgeWindow(QMainWindow):
         create_game    -- flag indicating whether the client should create a new game
         player_uuid    -- the UUID of the player (optional)
         copilot        -- flag indicating whether the client should start in copilot mode
-        autopilot      -- flag indicating whether the client should start in autopilot mode
+        model          -- the model to be used for copilot mode
         """
         super().__init__()
         load_dotenv()
@@ -478,7 +484,7 @@ class BridgeWindow(QMainWindow):
         self._game_uuid = game_uuid
         self._player_uuid = player_uuid if player_uuid else str(uuid.uuid4())
         self._copilot = True if copilot else False
-        self._autopilot = True if autopilot else False
+        self._model = model
         self._create_game = create_game
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -523,6 +529,8 @@ class BridgeWindow(QMainWindow):
         logging.info("Initializing widgets")
         self._central_widget = QWidget(self)
         self._layout = QHBoxLayout(self._central_widget)
+
+        # Bidding layout
         self._bidding_layout = QVBoxLayout()
         self._call_panel = bidding.CallPanel(self._central_widget)
         self._call_panel.callMade.connect(self._send_call_command)
@@ -534,12 +542,24 @@ class BridgeWindow(QMainWindow):
         self._tricks_won_label = tricks.TricksWonLabel(self._central_widget)
         self._bidding_layout.addWidget(self._tricks_won_label)
         self._layout.addLayout(self._bidding_layout)
-        self._card_area = cards.CardArea(self._central_widget, self._copilot)
+
+        # Cards area layout
+        self._cards_layout = QVBoxLayout()
+        self._card_area = cards.CardArea(self._central_widget)
         for hand in self._card_area.hands():
             hand.cardPlayed.connect(self._send_play_command)
-        self._layout.addWidget(self._card_area)
+        self._cards_layout.addWidget(self._card_area)
+
+        # Add Copilot text box below the cards area
+        self._copilot_widget = Copilot(self._central_widget)
+        self._cards_layout.addWidget(self._copilot_widget)
+
+        self._layout.addLayout(self._cards_layout)
+
+        # Score table
         self._score_table = score.ScoreTable(self._central_widget)
         self._layout.addWidget(self._score_table)
+
         self.setCentralWidget(self._central_widget)
         self._counter = None
 
@@ -694,43 +714,21 @@ class BridgeWindow(QMainWindow):
             logging.info("Cards: %r", cards)
         # make call to get_bid_suggestion from llm_integration
         logging.info(f"copilot: {self._copilot}")
-        logging.info(f"autopilot: {self._autopilot}")
         if allowed_calls is not missing:
             if allowed_calls:
-                if (self._copilot or self._autopilot):
+                if (self._copilot):
                     logging.info(f"position: {position}")
                     hand = self._cards.get(position, [])
                     logging.info(f"hand: {hand}")
                     logging.info(f"allowed_calls: {allowed_calls}") 
                     bids_history = self._bids_history
                     logging.info(f"bids_history: {bids_history}")
-                    get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_calls, bids_history)
+                    allowed_biddings = self._llm_integration_instance.get_allowed_bidding(allowed_calls)
+                    get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_biddings, bids_history,self._model)
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
                     if self._copilot:
-                        self._card_area.displayMessage(get_bid_suggestion)
+                        self._copilot_widget.append_message(f"Suggested bid: {get_bid_suggestion}")
                     logging.info(f"allowed_calls: {allowed_calls}")
-                    logging.info(f"autopilot: {self._autopilot}")
-                    if self._autopilot:
-                        if len(allowed_calls) > 1: 
-                            get_bid = self._llm_integration_instance.get_bid_prompt(get_bid_suggestion, allowed_calls)
-                            logging.info(f"get_bid from llm: {get_bid}")
-                            try:
-                                # Remove backticks and extra formatting
-                                cleaned_response = get_bid.strip("```json").strip("```").strip()
-                                get_bid = json.loads(cleaned_response)
-                                logging.info(f"after cleaning get_bid: {get_bid}")
-                                # Call _send_call_command to send the bid to the server
-                                self._send_call_command(get_bid)
-                            except json.JSONDecodeError as e:
-                                logging.error(f"Failed to parse JSON from get_bid: {e}")
-                                self._card_area.displayMessage("Error: Invalid response format from LLM.")
-                            except Exception as e:
-                                logging.error(f"Unexpected error while handling get_bid: {e}")
-                                self._card_area.displayMessage("Error: Unexpected issue with LLM response.")
-                        else:
-                            get_bid = allowed_calls[0]
-                            logging.info(f"only allowed bid: {get_bid}")
-                            self._send_call_command(get_bid)
             else:
                 logging.error("Allowed calls list empty ")
         else:
@@ -765,43 +763,11 @@ class BridgeWindow(QMainWindow):
                 logging.info(f"contractors: {contractors}")
                 logging.info(f"bids_history: {bids_history}")
                 logging.info(f"tricks_history: {tricks_history}")
-                if (self._copilot or self._autopilot):
+                if (self._copilot):
                     get_card_play_suggestion = self._llm_integration_instance.get_card_play_suggestion(play_from, position, own_hand, partners_hand, trick, allowed_cards, contract, contractors, bids_history, tricks_history)
                     logging.info(f"get_card_play_suggestion: {get_card_play_suggestion}")
                     if self._copilot:
                         self._card_area.displayMessage(get_card_play_suggestion)
-                    if self._autopilot:
-                        try:
-                            if not get_card_play_suggestion:
-                                raise ValueError("get_card_play_suggestion is empty or invalid.")
-                            
-                            get_card_play_prompt = self._llm_integration_instance.get_card_play_prompt(
-                                get_card_play_suggestion, allowed_cards
-                            )
-                            logging.info(f"get_card_play_prompt: {get_card_play_prompt}")
-
-                            # Validate the prompt before parsing
-                            if not get_card_play_prompt or not isinstance(get_card_play_prompt, str):
-                                raise ValueError("Invalid prompt received from get_card_play_prompt.")
-
-                            # Clean up the response and parse JSON
-                            cleaned_response = get_card_play_prompt.strip("```json").strip("```").strip()
-                            get_card_play_prompt = json.loads(cleaned_response)
-                            logging.info(f"after cleaning get_card_play_prompt: {get_card_play_prompt}")
-
-                            # Call _send_play_command to send the play to the server
-                            Card = namedtuple("Card", ["rank", "suit"])
-                            card = Card(**get_card_play_prompt)
-                            self._send_play_command(card)
-                        except ValueError as e:
-                            logging.error(f"Validation error: {e}")
-                            self._card_area.displayMessage("Error: Invalid suggestion or prompt.")
-                        except json.JSONDecodeError as e:
-                            logging.error(f"Failed to parse JSON from get_card_play_prompt: {e}")
-                            self._card_area.displayMessage("Error: Invalid response format from LLM.")
-                        except Exception as e:
-                            logging.error(f"Unexpected error while handling get_card_play_prompt: {e}")
-                            self._card_area.displayMessage("Error: Unexpected issue with LLM response.")
         tricks = pubstate.get(TRICKS_TAG, missing)
         if tricks is not missing:
             if tricks:
@@ -827,7 +793,10 @@ class BridgeWindow(QMainWindow):
         logging.debug("Call successful")
 
     def _handle_play_reply(self, **kwargs):
-        logging.debug("Play successful")
+        if kwargs.get("status") == "ERR:RV":
+            logging.error("Rule violation: Invalid card play")
+        else:
+            logging.debug("Play successful")
 
     def _handle_deal_event(self, opener=None, vulnerability=None, counter=None, **kwargs):
         logging.debug("Dealing cards")
@@ -963,6 +932,9 @@ def main():
         '--autopilot', action="store_true",
         help="""If provided, the application is started in autopilot mode.""")
     parser.add_argument(
+        '--model',
+        help="""The model to use for the autopilot or copilote mode. List of models currently supported: gpt-3.5-turbo, gpt-4-turbo""")
+    parser.add_argument(
         "--verbose", "-v", action="count", default=0,
         help="""Increase logging levels. Repeat for even more logging.""")
     args = parser.parse_args()
@@ -988,13 +960,17 @@ def main():
     event_socket = zmqctx.socket(zmq.SUB)
     messaging.setupCurve(event_socket, curve_server_key)
     event_socket.connect(next(endpoint_generator))
+    model = args.model
+    if model is None:
+        model = 'gpt-3.5-turbo'
+    logging.info(f"Model: {model}")
 
     if args.autopilot:
         logging.info("Running in autopilot mode without GUI.")
         # Run in headless mode without creating any QWidget
         bridge_autopilot = BridgeAutopilot(
             control_socket, event_socket, args.position, args.game,
-            args.create_game, args.player, args.copilot, args.autopilot)
+            args.create_game, args.player, args.autopilot, model)
         bridge_autopilot.start()
         try:
             while True:
@@ -1006,7 +982,7 @@ def main():
         app = QApplication(sys.argv)
         window = BridgeWindow(
             control_socket, event_socket, args.position, args.game,
-            args.create_game, args.player, args.copilot, args.autopilot)
+            args.create_game, args.player, args.copilot, model)
         code = app.exec_()
 
         logging.info("Main window closed. Closing sockets.")

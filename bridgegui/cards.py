@@ -359,7 +359,7 @@ class CardArea(QWidget):
         _HAND_POSITIONS[3].x() + HandPanel._VERTICAL_SIZE.width(),
         _HAND_POSITIONS[0].y() + HandPanel._HORIZONTAL_SIZE.height())
 
-    def __init__(self, parent=None, copilot=None):
+    def __init__(self, parent=None):
         """Initialize card area
 
         Keyword Arguments:
@@ -381,16 +381,6 @@ class CardArea(QWidget):
             int((self._SIZE.width() - TrickPanel._SIZE.width()) / 2),
             int((self._SIZE.height() - TrickPanel._SIZE.height()) / 2)
         )
-        if copilot:
-            # Add QLabel for displaying messages
-            self._message_label = QLabel(self)
-            self._message_label.move(100, self._SIZE.height() - 500)
-            self._message_label.resize(self._SIZE.width() - 200, 200)
-            self._message_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-            self._message_label.setStyleSheet("background-color: white; border: 1px solid black; color: black;")
-            self._message_label.setWordWrap(True)
-            self._message_label.setScaledContents(True)
-            self._message_label.show()
 
     def setPlayerPosition(self, position):
         """Set position of the current player
