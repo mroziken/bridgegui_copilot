@@ -2,6 +2,7 @@ import json
 import logging
 
 from openai import OpenAI
+from bridgegui.bridge_broker_agent import get_bridge_advice
 
 class LLMIntegration:
 
@@ -180,6 +181,15 @@ Your task:
             {"role": "user", "content": prompt}
         ], temperature=0)
         return response.choices[0].message.content
+    
+    def get_bid_suggestion_v2(self, position, hand, allowed_bidding, bidding_so_far):
+        response = get_bridge_advice(
+            position=position,
+            hand=hand,
+            allowed_bidding=allowed_bidding,
+            bidding_so_far=bidding_so_far
+        )
+        return response
 
     def _get_bid_suggestion_prompt(self, position, hand, allowed_bidding, bidding_so_far):
         template = '''You are an expert Bridge player. Your position is {position}.

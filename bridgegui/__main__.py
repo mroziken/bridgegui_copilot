@@ -29,8 +29,10 @@ import os
 from dotenv import load_dotenv
 from bridgegui.llm_integration import LLMIntegration
 from collections import namedtuple
-import threading
-from bridgegui.copilot import Copilot  # Import the Copilot widget
+from bridgegui.copilot_widget import Copilot  # Import the Copilot widget
+from bridgegui.bridge_broker_agent import get_bridge_advice
+from bridgegui.game_label_widget import GameLabel  # Import GameLabel from the appropriate module
+
 
 HELLO_COMMAND = b'bridgehlo'
 GAME_COMMAND = b'game'
@@ -277,8 +279,14 @@ class BridgeAutopilot(QObject):
                     allowed_biddings = self._llm_integration_instance.get_allowed_bidding(allowed_calls)
                     get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_biddings, bids_history,self._model)
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
-                    get_bid = self._llm_integration_instance.get_bid_prompt(get_bid_suggestion, allowed_calls)
-                    logging.info(f"get_bid from llm: {get_bid}")
+
+                    # Directly access the 'output' dictionary
+                    output_json = get_bid_suggestion['output']  # No need for json.loads
+                    your_team_analysis = output_json.get('your_team_analysis', '')
+
+                    logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
+                    if self._autopilot:
+                        self._copilot_widget.append_message(f"Analysis: {your_team_analysis}")
                     try:
                         # Remove backticks and extra formatting
                         cleaned_response = get_bid.strip("```json").strip("```").strip()
@@ -501,6 +509,7 @@ class BridgeWindow(QMainWindow):
         self._bids_history = []
         self._tricks_history = []
         self._current_trick = []
+        self._phase = "bidding"
         
 
     def _init_sockets(self, control_socket, event_socket):
@@ -553,6 +562,10 @@ class BridgeWindow(QMainWindow):
         # Add Copilot text box below the cards area
         self._copilot_widget = Copilot(self._central_widget)
         self._cards_layout.addWidget(self._copilot_widget)
+
+        # Add the GameLabel widget
+        self._game_label = GameLabel(self._central_widget)
+        self._game_label.set_text(f"Game ID: {self._game_uuid}")
 
         self._layout.addLayout(self._cards_layout)
 
@@ -724,10 +737,22 @@ class BridgeWindow(QMainWindow):
                     bids_history = self._bids_history
                     logging.info(f"bids_history: {bids_history}")
                     allowed_biddings = self._llm_integration_instance.get_allowed_bidding(allowed_calls)
-                    get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_biddings, bids_history,self._model)
+                    #get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_biddings, bids_history,self._model)
+                    get_bid_suggestion = get_bridge_advice(
+                        position = position, 
+                        phase = self._phase, 
+                        hand = hand,
+                        allowed_bids = allowed_biddings, 
+                        bidding_history = bids_history
+                        )
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
+
+                    # Directly access the 'output' dictionary
+                    output_json = get_bid_suggestion['output']  # No need for json.loads
+                    your_team_analysis = output_json.get('your_team_analysis', '')
+
                     if self._copilot:
-                        self._copilot_widget.append_message(f"Suggested bid: {get_bid_suggestion}")
+                        self._copilot_widget.append_message(f"Analysis: {your_team_analysis}")
                     logging.info(f"allowed_calls: {allowed_calls}")
             else:
                 logging.error("Allowed calls list empty ")
@@ -807,6 +832,7 @@ class BridgeWindow(QMainWindow):
         self._call_table.setVulnerability(vulnerability)
         self._bidding_result_label.setBiddingResult(None, None)
         self._request(PUBSTATE_TAG, PRIVSTATE_TAG)
+        self._phase = "play"
 
     def _handle_turn_event(self, position=None, counter=None, **kwargs):
         logging.debug("Turn event")
