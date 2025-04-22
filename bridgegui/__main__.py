@@ -277,14 +277,23 @@ class BridgeAutopilot(QObject):
                     bids_history = self._bids_history
                     logging.info(f"bids_history: {bids_history}")
                     allowed_biddings = self._llm_integration_instance.get_allowed_bidding(allowed_calls)
-                    get_bid_suggestion = self._llm_integration_instance.get_bid_suggestion(position, hand, allowed_biddings, bids_history,self._model)
+                    
+                    get_bid_suggestion = get_bridge_advice(
+                        position = position, 
+                        phase = self._phase, 
+                        hand = hand,
+                        allowed_bids = allowed_biddings, 
+                        bidding_history = bids_history
+                        )
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
 
                     # Directly access the 'output' dictionary
                     output_json = get_bid_suggestion['output']  # No need for json.loads
                     your_team_analysis = output_json.get('your_team_analysis', '')
+                    bid_suggestion = output_json.get('bid_suggestion', 'pass')
 
-                    logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
+                    logging.info(f"your_team_analysis: {your_team_analysis}")
+                    logging.info(f"bid_suggestion: {bid_suggestion}")
                     if self._autopilot:
                         self._copilot_widget.append_message(f"Analysis: {your_team_analysis}")
                     try:
@@ -595,6 +604,7 @@ class BridgeWindow(QMainWindow):
     def _init_game(self, game_uuid):
         logging.info("Initializing game %r", game_uuid)
         self._game_uuid = game_uuid
+        self._game_label.set_text(f"Game ID: {self._game_uuid}")
         self._event_socket.setsockopt(zmq.SUBSCRIBE, game_uuid.encode())
         self._event_socket_queue = messaging.MessageQueue(
             self._event_socket, "event socket queue", messaging.validateEventMessage,
@@ -748,8 +758,7 @@ class BridgeWindow(QMainWindow):
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
 
                     # Directly access the 'output' dictionary
-                    output_json = get_bid_suggestion['output']  # No need for json.loads
-                    your_team_analysis = output_json.get('your_team_analysis', '')
+                    your_team_analysis = get_bid_suggestion.get('your_team_analysis', '')
 
                     if self._copilot:
                         self._copilot_widget.append_message(f"Analysis: {your_team_analysis}")

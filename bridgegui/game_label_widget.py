@@ -37,6 +37,9 @@ class GameLabel(QLabel):
         self.setTextInteractionFlags(Qt.NoTextInteraction)
         self.setTextInteractionFlags(Qt.TextBrowserInteraction)
 
+        # set black text color
+        self.set_text_color("black")
+
 
 
     def resizeEvent(self, event):
