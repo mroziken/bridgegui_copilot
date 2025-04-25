@@ -17,7 +17,7 @@ from collections import namedtuple
 
 from PyQt5.QtCore import pyqtSignal, QPoint, QRectF, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QPainter
-from PyQt5.QtWidgets import QGridLayout, QLabel, QWidget
+from PyQt5.QtWidgets import QGridLayout, QLabel, QWidget, QPushButton  # Add this import
 
 import bridgegui.messaging as messaging
 import bridgegui.positions as positions
@@ -373,8 +373,8 @@ class CardArea(QWidget):
             hand_panel = HandPanel(self, n % 2 == 1)
             hand_panel.move(point)
             self._hand_panels.append(hand_panel)
-        self._position_labels = [
-            self._get_position_label(position) for
+        self._position_buttons = [
+            self._get_position_button(position) for
             position in positions.Position]
         self._trick_panel = TrickPanel(self)
         self._trick_panel.move(
@@ -383,19 +383,18 @@ class CardArea(QWidget):
         )
 
     def setPlayerPosition(self, position):
-        """Set position of the current player
-
-        The position must be set before setting cards. Cards for the current
-        player are laid at the bottom of the area.
-        """
+        """Set position of the current player"""
         self._position = positions.asPosition(position)
         hand_map = {}
-        for position, hand, label in zip(
+        for position, hand, button in zip(
                 positions.rotate(self._position), self._hand_panels,
-                self._position_labels):
-            hand_map[position] = (hand, label)
-            label.setText(positions.positionLabel(position))
-            label.resize(hand.width(), label.height())
+                self._position_buttons):  # Use pre-created buttons
+            hand_map[position] = (hand, button)
+            # Disable the button for the current player's position
+            if position == self._position:
+                button.setEnabled(False)
+            else:
+                button.setEnabled(True)
         self._hand_map = hand_map
         self._trick_panel.setPlayerPosition(self._position)
 
@@ -460,7 +459,41 @@ class CardArea(QWidget):
     def _get_position_label(self, position):
         label = QLabel(self)
         label.move(self._HAND_POSITIONS[position])
+
+        # Set the label text to the position name
+        label.setText(positions.positionLabel(position))
+
+        # Create a button labeled with the position name (e.g., "East", "South")
+        button = QPushButton(positions.positionLabel(position), self)
+        
+        button.move(
+            self._HAND_POSITIONS[position].x() + label.width() + 10,
+            self._HAND_POSITIONS[position].y()
+        )
+        button.clicked.connect(lambda: self._start_bot_for_position(position))  # Connect button to a handler
+
         return label
+
+    def _get_position_button(self, position):
+        """Create a button for the given position"""
+        # Map position names (e.g., "East", "South") to indices
+        position_index = positions.asPosition(position)  # Ensure position is converted to an index
+
+        # Create a button labeled with the position name (e.g., "East", "South")
+        button = QPushButton(positions.positionLabel(position), self)
+        
+        # Position the button at the corresponding location
+        button.move(self._HAND_POSITIONS[position_index])
+        
+        # Connect the button to the handler for starting the bot
+        button.clicked.connect(lambda: self._start_bot_for_position(position))
+        
+        return button
+
+    def _start_bot_for_position(self, position):
+        """Handle the Start Bot button click for a specific position"""
+        print(f"Start Bot clicked for position: {position}")
+        # Add logic to start the bot for the given position
 
     def displayMessage(self, message):
         """Display a message in the message label"""

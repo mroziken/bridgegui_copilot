@@ -264,13 +264,12 @@ Your job:
 Remember to call the appropriate tool if needed. If you already have enough 
 information, propose a final answer. 
 
-Your response should be in JSON format with the following keys:
+Your response must be in JSON format with the following keys:
     "your_team_analysis": "<updated_your_team_analysis>",
     "opponent_analysis": "<updated_opponent_analysis>",
     "bid_suggestion": "<subsequent_bid_suggestion>",
     "play_suggestion": "<card_to_play>"
 
-Use format_final_answer_tool to format the final answer.
 
 You receive the following game state:
 
