@@ -187,30 +187,7 @@ def analyze_play_tool(input_data: str) -> str:
     else:
         return "No valid card"
     
-def format_final_answer_function(input_data: str) -> getBrdidgeAdviceResponse:
-    """
-    Parses the input_data string to a dictionary and formats the final answer.
-    """
-    try:
-        # Try JSON parsing first in case it comes in as valid JSON
-        input_dict = json.loads(input_data)
-    except json.JSONDecodeError:
-        # Fall back to custom parsing if JSON fails
-        input_dict = parse_input_data(input_data)
 
-    # Extract the required fields
-    your_team_analysis = input_dict.get("your_team_analysis")
-    opponent_analysis = input_dict.get("opponent_analysis")
-    bid_suggestion = input_dict.get("bid_suggestion")
-    play_suggestion = input_dict.get("play_suggestion")
-
-    # Return the formatted response
-    return getBrdidgeAdviceResponse(
-        your_team_analysis=your_team_analysis,
-        opponent_analysis=opponent_analysis,
-        bid_suggestion=bid_suggestion,
-        play_suggestion=play_suggestion
-    )
 
 ########################################
 # 2) WRAP THE TOOLS AS LANGCHAIN TOOLS
@@ -258,18 +235,6 @@ opening_bidding_tool = StructuredTool.from_function(
     response_format="content"
 )
 
-format_final_answer_tool = StructuredTool.from_function(
-    name="format_final_answer_tool",
-    func=format_final_answer_function,
-    description=(
-        "Use this tool to format the final answer. "
-        "Input should be a dictionary with keys 'your_team_analysis', "
-        "'opponent_analysis', 'bid_suggestion', and 'play_suggestion'. "
-        "The function returns a JSON string."
-    ),
-    handle_validation_error=True,
-    args_schema=getBrdidgeAdviceResponse
-)
 
 
 
@@ -342,7 +307,7 @@ llm = ChatOpenAI(
     verbose=True
 )
 
-tools = [play_analysis_tool, recognize_bidding_stage_tool, opening_bidding_tool, format_final_answer_tool]
+tools = [play_analysis_tool, recognize_bidding_stage_tool, opening_bidding_tool]
 
 agent = initialize_agent(
     tools=tools,

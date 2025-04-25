@@ -8,7 +8,7 @@ import json
 import logging
 from typing import List
 from bridgegui.schemas import Card
-from bridgegui.schemas import OpeningBiddingToolInput, OpeningBiddingToolOutput, OpeningBidToolInput, OpeningBidToolOutput
+from bridgegui.schemas import OpeningBiddingToolInput, OpeningBidToolInput, OpeningBidToolOutput, BidOpeningAgentOutput
 from bridgegui.utils2 import parse_input_data
 from bridgegui.llm_tools import count_hcp_tool, is_balanced_hand_tool, dominant_suit_tool, get_suit_distribution_tool
 from langchain.tools import StructuredTool  # Import StructuredTool
@@ -97,12 +97,12 @@ Steps to Follow (in exact order, do not skip any):
 
 Final response must be in this JSON format:
     "position": "<position>",
-    "hand": "<hand_as_json_string>",
-    "bidding_history": "<bidding_history_as_json_string>",
-    "allowed_bids": "<allowed_bids_as_json_string>",
-    "hcp": "<hcp>",
-    "suit_distribution": "<suit_distribution_as_json_string>",
-    "is_balanced_hand": "<true_or_false>",
+    "hand": <hand_as_json>,
+    "bidding_history": <bidding_history>,
+    "allowed_bids": <allowed_bids>,
+    "hcp": <hcp>,
+    "suit_distribution": <suit_distribution>,
+    "is_balanced_hand": <true_or_false>,
     "dominant_suit": "<dominant_suit_as_json_string>",
     "your_team_analysis": "<concise_observation_summary>",
     "bid_suggestion": "<valid_bid_from_allowed_list_or_pass>"
@@ -150,7 +150,7 @@ opening_bidding_agent = initialize_agent(
 # 5) EXAMPLE USAGE
 ########################################
 
-def get_opening_advice(input_data: "OpeningBiddingToolInput") -> "OpeningBiddingToolOutput":
+def get_opening_advice(input_data: "OpeningBiddingToolInput") -> "BidOpeningAgentOutput":
     """
     This function is the "broker" that orchestrates context gathering
     and calls the LLM agent for a recommendation.

@@ -97,6 +97,18 @@ class SuggestResponseBidToolInput(BaseModel):
     partners_opening_bid_analysis: str
     your_hand_analysis: str
 
+class BidOpeningAgentOutput(BaseModel):
+    position: str
+    hand: List[Card]
+    bidding_history: List[str]
+    allowed_bids: List[str]
+    hcp: int
+    suit_distribution: str
+    is_balanced_hand: bool
+    dominant_suit: str
+    your_team_analysis: str
+    bid_suggestion: str
+
 class OpeningBiddingToolReponse(BaseModel):
     your_team_analysis: str
     bid_suggestion: str
