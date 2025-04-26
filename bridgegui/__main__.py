@@ -98,6 +98,7 @@ class BridgeAutopilot(QObject):
         self._bids_history = []
         self._tricks_history = []
         self._current_trick = []
+        self._phase = "bidding"
 
 
     def _init_sockets(self, control_socket, event_socket):

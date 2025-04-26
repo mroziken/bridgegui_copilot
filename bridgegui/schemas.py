@@ -1,9 +1,24 @@
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, Field, RootModel
+from typing import List, Optional, Literal, Dict, Any
+
+
+class Bid(BaseModel):
+    level: int
+    strain: str
+
+class PlayerAction(BaseModel):
+    type: Literal['bid', 'pass']
+    bid: Optional[Bid] = None
+
+class BiddingHistoryItem(RootModel):
+    root: Dict[Literal['north', 'east', 'south', 'west'], PlayerAction]
+
+class BiddingHistory(BaseModel):
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
 
 class RecognizeBiddingStageInput(BaseModel):
     position: str
-    bidding_history: list[str]
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
 
 class Card(BaseModel):
     rank: str
@@ -12,13 +27,13 @@ class Card(BaseModel):
 class OpeningBiddingToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
 
 class OpeningBiddingToolOutput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
     hcp: int
     distribution: str
@@ -44,14 +59,14 @@ class OpeningBidToolOutput(BaseModel):
 class BiddingAnalysisToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
     proposed_bid: str
 
 class PlayAnalysisToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
     proposed_bid: str
     play_history: List[str]
@@ -79,19 +94,19 @@ class SuitDistributionInput(BaseModel):
 class IsAllowedBidToolInput(BaseModel):
     proposed_bid: str
     allowed_bids: List[str]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
 
 class AnalyzePartnerOpeningBidToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
     proposed_bid: str
 
 class SuggestResponseBidToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
     proposed_bid: str
     partners_opening_bid_analysis: str
@@ -100,7 +115,7 @@ class SuggestResponseBidToolInput(BaseModel):
 class BidOpeningAgentOutput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: List[str]
+    bidding_history: BiddingHistory
     allowed_bids: List[str]
     hcp: int
     suit_distribution: str

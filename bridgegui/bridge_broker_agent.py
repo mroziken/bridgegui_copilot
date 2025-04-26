@@ -13,12 +13,14 @@ from bridgegui.bid_response_agent import get_opening_response_advice
 from bridgegui.subsequent_bid_agent import get_subsequent_bid_advice
 from langchain.tools import StructuredTool
 from bridgegui.schemas import (
-    RecognizeBiddingStageInput,
     OpeningBiddingToolInput,
     OpeningBiddingToolReponse,
     PlayAnalysisToolInput,
     getBrdidgeAdviceResponse,
-    Card)
+    Card,
+    BiddingHistoryItem,
+    RecognizeBiddingStageInput
+    )
 
 
 
@@ -29,16 +31,19 @@ from bridgegui.schemas import (
 
 
 
-def bidding_stage_tool(position: str, bidding_history: List[Card]) -> str:
+def recognize_bidding_stage_function(position: str, bidding_history: List[BiddingHistoryItem]) -> str:
     """
     This function determines the bidding stage based on the position and bidding history.
     Args:
         position (str): The position of the player (e.g., "north", "south", "east", "west").
-        bidding_history (List[str]): The history of bids made in the game.
+        bidding_history (List[BiddingHistoryItem]): The history of bids made in the game.
     Returns:
         str: The bidding stage, which can be "Opening", "Response", or "Subsequent".
     """
-    
+    logging.debug("DEBUG: Input data for recognize bidding stage function: %s", {
+        "position": position,
+        "bidding_history": bidding_history
+    })
     
     # Determine partner's position
     if position.lower() == "north":
@@ -209,14 +214,14 @@ play_analysis_tool = StructuredTool.from_function(
 
 
 recognize_bidding_stage_tool = StructuredTool.from_function(
-    name="recognize_bidding_stage",
-    func=bidding_stage_tool,
+    name="recognize_bidding_stage_tool",
+    func=recognize_bidding_stage_function,
     description=(
         "Use this tool to recognize the bidding stage, given the "
         "bidding history and the position. "
         "Input should be a dictionary with keys 'position' and 'bidding_history'. "
         "The position can be one of: north, south, east, west. "
-        "The bidding history is a list of strings, each representing a bid. "
+        "The bidding history is list of BiddingHistoryItem or empty list. "
         "The possible stages are: Opening, Response, Subsequent."
     ),
     handle_validation_error=True,
@@ -253,16 +258,15 @@ bridge_prompt = PromptTemplate(
         "opponent_analysis", "bid_suggestion", "play_suggestion"
     ],
     template="""
-You are a Bridge Advisor. 
+You are a Bridge Advisor. Your job is to analyze the current game state and provide recommendations for bidding or playing cards.
 
-Your job:
-1. Determine if you need specialized analysis from the bidding or play tool.
-2. If in bidding phase, determine the bidding stage and then figure out the best possible bid. 
-3. If in play phase, figure out the best possible card to play.
+Given the current phase is bidding you need to execute the following steps:
+1. Determine the bidding stage (Opening, Response, Subsequent) using the bidding history and your position. Use the recognize_bidding_stage_tool.
+2. Based on the bidding stage, analyze the hand and suggest the best possible bid. Use the opening_bidding_tool.
 
-
-Remember to call the appropriate tool if needed. If you already have enough 
-information, propose a final answer. 
+Given the current phase is play you need to execute the following steps:
+1. Analyze the current trick and suggest the best card to play. Use the play_analysis_tool.
+2. Consider the allowed cards and the contract to make your decision.
 
 Your response must be in JSON format with the following keys:
     "your_team_analysis": "<updated_your_team_analysis>",
