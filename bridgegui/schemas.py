@@ -27,13 +27,13 @@ class Card(BaseModel):
 class OpeningBiddingToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
 
 class OpeningBiddingToolOutput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
     hcp: int
     distribution: str
@@ -59,14 +59,14 @@ class OpeningBidToolOutput(BaseModel):
 class BiddingAnalysisToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
     proposed_bid: str
 
 class PlayAnalysisToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
     proposed_bid: str
     play_history: List[str]
@@ -94,19 +94,19 @@ class SuitDistributionInput(BaseModel):
 class IsAllowedBidToolInput(BaseModel):
     proposed_bid: str
     allowed_bids: List[str]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
 
 class AnalyzePartnerOpeningBidToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
     proposed_bid: str
 
 class SuggestResponseBidToolInput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
     proposed_bid: str
     partners_opening_bid_analysis: str
@@ -115,7 +115,7 @@ class SuggestResponseBidToolInput(BaseModel):
 class BidOpeningAgentOutput(BaseModel):
     position: str
     hand: List[Card]
-    bidding_history: BiddingHistory
+    bidding_history: List[BiddingHistoryItem] = Field(default_factory=list)
     allowed_bids: List[str]
     hcp: int
     suit_distribution: str

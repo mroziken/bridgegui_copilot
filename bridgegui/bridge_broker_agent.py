@@ -68,14 +68,14 @@ def recognize_bidding_stage_function(position: str, bidding_history: List[Biddin
     else:
         return "Subsequent"
     
-def opening_bidding_stage_function(position: str, hand: List[Card], allowed_bids: List[str], bidding_history: List[str]) -> OpeningBiddingToolReponse:
+def opening_bidding_stage_function(position: str, hand: List[Card], allowed_bids: List[str], bidding_history: List[BiddingHistoryItem]) -> OpeningBiddingToolReponse:
     """
     This function analyzes the opening bid based on the position, hand, allowed bids, and bidding history.
     Args:
         position (str): The position of the player (e.g., "north", "south", "east", "west").
         hand (List[Card]): The player's hand represented as a list of Card objects.
         allowed_bids (List[str]): The list of allowed bids.
-        bidding_history (List[str]): The history of bids made in the game.
+        bidding_history (List[BiddingHistoryItem]): The history of bids made in the game.
     Returns:
         str: The recommended opening bid.
     """
