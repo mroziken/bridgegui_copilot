@@ -260,13 +260,20 @@ bridge_prompt = PromptTemplate(
     template="""
 You are a Bridge Advisor. Your job is to analyze the current game state and provide recommendations for bidding or playing cards.
 
-Given the current phase is bidding you need to execute the following steps:
+Steps to follow in the bidding phase only:
 1. Determine the bidding stage (Opening, Response, Subsequent) using the bidding history and your position. Use the recognize_bidding_stage_tool.
-2. Based on the bidding stage, analyze the hand and suggest the best possible bid. Use the opening_bidding_tool.
+2. If the bidding stage is Opening then use the opening_bidding_tool.
+3. If the bidding stage is Response then use the response_bidding_tool.
+4. If the bidding stage is Subsequent then use the subsequent_bidding_tool.
+5. Formulate your response in JSON format.
 
-Given the current phase is play you need to execute the following steps:
+
+Steps to follow in the play phase only:
 1. Analyze the current trick and suggest the best card to play. Use the play_analysis_tool.
 2. Consider the allowed cards and the contract to make your decision.
+3. Formulate your response in JSON format.
+
+Use only tool relevant to the phase of the game.
 
 Your response must be in JSON format with the following keys:
     "your_team_analysis": "<updated_your_team_analysis>",
