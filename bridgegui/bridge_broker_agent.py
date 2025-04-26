@@ -351,7 +351,11 @@ def get_bridge_advice(
         tricks_taken (dict[str, int]): A dictionary representing the number of tricks taken by each team.
         tricks_history (list[str]): A list of strings representing the history of tricks taken.
     Returns:
-        getBrdidgeAdviceResponse: The recommendation from the agent.
+        getBrdidgeAdviceResponse schema object:
+            your_team_analysis: "<updated_your_team_analysis>",
+            opponent_analysis: "<updated_opponent_analysis>",
+            bid_suggestion: "<subsequent_bid_suggestion>",
+            play_suggestion: "<card_to_play>"
     """
     if allowed_bids is None:
         allowed_bids = []

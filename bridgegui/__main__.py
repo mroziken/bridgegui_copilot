@@ -187,6 +187,9 @@ class BridgeAutopilot(QObject):
             kwargs[POSITION_TAG] = self._preferred_position
         if self._game_uuid:
             kwargs[GAME_TAG] = self._game_uuid
+        logging.info("Joining game %r", self._game_uuid)
+        logging.info("Player %r", self._player_uuid)
+        logging.info("Position %r", self._preferred_position)
         sendCommand(
             self._control_socket, JOIN_COMMAND,
             player=self._player_uuid, **kwargs)
@@ -680,6 +683,9 @@ class BridgeWindow(QMainWindow):
         logging.info("Created game %r", game)
         self._game_uuid = game
         self._send_join_command()
+        logging.info("calling setGameId: %r", game)
+        self._card_area.setGameId(game)
+
 
     def _handle_join_reply(self, game=None, **kwargs):
         logging.info("Joined game %r", game)
@@ -758,7 +764,12 @@ class BridgeWindow(QMainWindow):
                     logging.info(f"get_bid_suggestion: {get_bid_suggestion}")
 
                     # Directly access the 'output' dictionary
-                    your_team_analysis = get_bid_suggestion.get('your_team_analysis', '')
+                    if isinstance(get_bid_suggestion, dict):
+                        your_team_analysis = get_bid_suggestion.get('your_team_analysis', '')
+                    elif isinstance(get_bid_suggestion, str):
+                        your_team_analysis = get_bid_suggestion
+                    else:
+                        your_team_analysis = "No analysis available"
 
                     if self._copilot:
                         self._copilot_widget.append_message(f"Analysis: {your_team_analysis}")
@@ -910,6 +921,12 @@ class BridgeWindow(QMainWindow):
 
     def _handle_player_event(self, player, position, **kwargs):
         logging.debug("Player joined. Player: %r. Position: %r", player, position)
+
+    def closeEvent(self, event):
+        """Handle the window close event"""
+        logging.info("Closing main window. Stopping all bot processes.")
+        self._card_area._stop_all_bots()  # Call the method to stop all bots
+        super().closeEvent(event)  # Call the parent class's closeEvent
 
 def _get_key_from_file(f):
     logging.debug("Reading key from file %r", f)

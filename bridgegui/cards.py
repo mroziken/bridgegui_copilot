@@ -14,10 +14,12 @@ CardArea   -- widget that holds HandPanel and TrickPanel objects
 
 import itertools
 from collections import namedtuple
+import logging
 
 from PyQt5.QtCore import pyqtSignal, QPoint, QRectF, Qt, QSize, QTimer
 from PyQt5.QtGui import QFont, QPainter
 from PyQt5.QtWidgets import QGridLayout, QLabel, QWidget, QPushButton  # Add this import
+import subprocess  # Add this import
 
 import bridgegui.messaging as messaging
 import bridgegui.positions as positions
@@ -247,7 +249,6 @@ class TrickPanel(QWidget):
         parent -- the parent widget
         """
         super().__init__(parent)
-        self.setMinimumSize(self._SIZE)
         self._rect_map = {}
         self._cards = []
         self._timer = QTimer(self)
@@ -363,12 +364,15 @@ class CardArea(QWidget):
         """Initialize card area
 
         Keyword Arguments:
-        parent  -- the parent widget"""
+        parent  -- the parent widget
+        """
         super().__init__(parent)
         self.setMinimumSize(self._SIZE)
         self._position_in_turn = None
         self._hand_panels = []
         self._hand_map = {}
+        self._game_id = None
+        self._bot_processes = {}  # Dictionary to store subprocesses by position
         for n, point in enumerate(self._HAND_POSITIONS):
             hand_panel = HandPanel(self, n % 2 == 1)
             hand_panel.move(point)
@@ -381,6 +385,12 @@ class CardArea(QWidget):
             int((self._SIZE.width() - TrickPanel._SIZE.width()) / 2),
             int((self._SIZE.height() - TrickPanel._SIZE.height()) / 2)
         )
+    
+    def setGameId(self, game_id):
+        """Set game id for the current game"""
+        logging.debug(f"Setting game ID: {game_id}")
+        self._game_id = game_id
+
 
     def setPlayerPosition(self, position):
         """Set position of the current player"""
@@ -456,44 +466,91 @@ class CardArea(QWidget):
         """Return list containing all HandPanel objects"""
         return list(self._hand_panels)
 
-    def _get_position_label(self, position):
-        label = QLabel(self)
-        label.move(self._HAND_POSITIONS[position])
-
-        # Set the label text to the position name
-        label.setText(positions.positionLabel(position))
-
-        # Create a button labeled with the position name (e.g., "East", "South")
-        button = QPushButton(positions.positionLabel(position), self)
-        
-        button.move(
-            self._HAND_POSITIONS[position].x() + label.width() + 10,
-            self._HAND_POSITIONS[position].y()
-        )
-        button.clicked.connect(lambda: self._start_bot_for_position(position))  # Connect button to a handler
-
-        return label
 
     def _get_position_button(self, position):
         """Create a button for the given position"""
+        logging.debug(f"Creating button for position: {position}")
+
         # Map position names (e.g., "East", "South") to indices
         position_index = positions.asPosition(position)  # Ensure position is converted to an index
 
         # Create a button labeled with the position name (e.g., "East", "South")
-        button = QPushButton(positions.positionLabel(position), self)
+        button_text = positions.positionLabel(position).lower()
+        button = QPushButton(button_text, self)
         
         # Position the button at the corresponding location
         button.move(self._HAND_POSITIONS[position_index])
         
         # Connect the button to the handler for starting the bot
-        button.clicked.connect(lambda: self._start_bot_for_position(position))
+        button.clicked.connect(lambda: self._start_bot_for_position(button_text))
         
         return button
 
     def _start_bot_for_position(self, position):
         """Handle the Start Bot button click for a specific position"""
-        print(f"Start Bot clicked for position: {position}")
-        # Add logic to start the bot for the given position
+        logging.debug(f"Start Bot button clicked for position: {position}")
+        game_id = self._game_id  # Get the game ID from the parent widget
+        logging.debug(f"Game ID: {game_id}")
+        try:
+            # Ensure game_id is not None
+            if not game_id:
+                raise ValueError("Game ID is required to start the bot.")
+
+            # Start a new process for the bot
+            command = f"bridgegui -vv --position {position} --autopilot --game {game_id} tcp://localhost:5555"
+            logging.debug(f"Command: {command}")
+            
+            # Use position in the log file names
+            stdout_file_name = f"bot_stdout_{position}.log"
+            stderr_file_name = f"bot_stderr_{position}.log"
+            
+            with open(stdout_file_name, "w") as stdout_file, open(stderr_file_name, "w") as stderr_file:
+                process = subprocess.Popen(
+                    [command],
+                    shell=True,
+                    stdout=stdout_file,
+                    stderr=stderr_file,
+                    text=True,
+                    start_new_session=True
+                )
+            # Store the process object in the dictionary
+            self._bot_processes[position] = process
+        except Exception as e:
+            print(f"Failed to start bot for position {position}: {e}")
+
+    def _stop_bot_for_position(self, position):
+        """Stop the bot process for a specific position"""
+        logging.debug(f"Stopping bot for position: {position}")
+        process = self._bot_processes.get(position)
+        if process:
+            try:
+                process.terminate()  # Gracefully terminate the process
+                process.wait(timeout=5)  # Wait for the process to terminate
+                logging.debug(f"Bot for position {position} terminated.")
+            except Exception as e:
+                logging.error(f"Failed to terminate bot for position {position}: {e}")
+            finally:
+                # Remove the process from the dictionary
+                del self._bot_processes[position]
+        else:
+            logging.warning(f"No bot process found for position {position}.")
+
+    def _stop_all_bots(self):
+        """Stop all bot processes"""
+        logging.debug("Stopping all bot processes")
+        for position, process in list(self._bot_processes.items()):
+            if process:
+                try:
+                    process.terminate()  # Gracefully terminate the process
+                    process.wait(timeout=5)  # Wait for the process to terminate
+                    logging.debug(f"Bot for position {position} terminated.")
+                except Exception as e:
+                    logging.error(f"Failed to terminate bot for position {position}: {e}")
+                finally:
+                    # Remove the process from the dictionary
+                    del self._bot_processes[position]
+            else:
+                logging.warning(f"No bot process found for position {position}.")
 
     def displayMessage(self, message):
         """Display a message in the message label"""
